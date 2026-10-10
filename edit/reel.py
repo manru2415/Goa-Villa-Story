@@ -236,7 +236,7 @@ class Reel:
             img = sum(S.frame(x) for x in idxs) / n
             streak = abs(np.mean([S.motion_dx(x) for x in idxs])) * (span - 1) * s.get("streak", 0.8)
             img = hblur(img, min(streak, 260 * self.W / 1080))
-        elif span < 0.8 and s.get("flow", True):         # slow motion: optical-flow interpolation
+        elif span < 0.95 and s.get("flow", True):         # slow motion: optical-flow interpolation
             img = S.interp(mid)
         else:
             img = S.frame(round(mid))
@@ -294,7 +294,18 @@ class Reel:
                 del self.sources[c]
 
     def encoder(self, out, preview):
-        aud = self.edl["audio"]; D = self.edl["duration"]
+        D = self.edl["duration"]
+        if self.edl.get("audio") is None:
+            cmd = ["ffmpeg", "-v", "error", "-y",
+                   "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{self.W}x{self.H}", "-r", str(FPS), "-i", "-",
+                   "-vf", "scale=out_color_matrix=bt709:out_range=tv,format=yuv420p",
+                   "-c:v", "libx264", "-preset", "medium" if preview else "slower", "-crf", "20" if preview else "16",
+                   "-maxrate", "20M", "-bufsize", "40M", "-profile:v", "high", "-level", "4.2", "-g", "60", "-bf", "2",
+                   "-x264-params", "aq-mode=3:deblock=-1,-1",
+                   "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv",
+                   "-an", "-movflags", "+faststart", "-t", str(D), out]
+            return subprocess.Popen(cmd, stdin=subprocess.PIPE)
+        aud = self.edl["audio"]
         fo = aud.get("fade_out", 0.06); fi = aud.get("fade_in", 0.02)
         af = (f"atrim=start={aud.get('start', 0)}:duration={D},asetpts=PTS-STARTPTS,"
               f"afade=t=in:d={fi},afade=t=out:st={D - fo:.3f}:d={fo},aresample=48000")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""EDL v4 - user's corrected sequence (clip 2 removed) synced line-by-line to the lyrics.
+"""Edit decision list: the corrected sequence (clip 2 removed), synced line-by-line to the lyrics.
 
 Order: 1, 3, 5, 6, 7, 8, 9, 4, 10, 11, 12, 13 (one clip per lyric line).
 Lyric timings measured on the isolated vocal stem (UVR MDX-Net) + Whisper + syllable onsets:
@@ -11,12 +11,15 @@ Lyric timings measured on the isolated vocal stem (UVR MDX-Net) + Whisper + syll
   5 o meri whiskey aaye      8.2-9.45     12 ghul mil ghul mil launda  20.72 ->     (the drop)
     (whis- 8.82)
   6 o meri tharra aaye       9.68-11.8 (thar- 10.72)
+Song: the reference reel's segment starts 211.881 s into the full song; the reel uses 36.0 s from there
+(the hook 24.7-31.6, then the 2nd "ghul mil ghul mil launda" 32.6-35.6, ending in the breath gap).
 """
 import json, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FPS = 30
-DUR = 28.0
+DUR = 36.0                     # vocal breath gap after the 2nd 'ghul mil ghul mil launda'; on the beat grid for the loop
+SONG = os.path.join(HERE, "song_36s.wav")     # made by render.sh from the full song
 NIGHT_DN = "hqdn3d=3:3:5:5"
 INT_DN = "hqdn3d=1.5:1.5:4:4"
 
@@ -45,7 +48,7 @@ def seg(clip, tl_in, tl_out, src_in, pieces, **kw):
 
 
 # cut points on the 30 fps grid
-C = [0, F(73), F(139), F(194), F(253), F(291), F(351), F(420), F(478), F(508), F(538), F(621), DUR]
+C = [0, F(73), F(139), F(194), F(253), F(291), F(351), F(420), F(478), F(508), F(545), F(621), DUR]
 
 segments = [
     # 1  door burst: face in the gap on "tujh" (0.69); slow push-in
@@ -74,14 +77,16 @@ segments = [
     # 9  twirl: "roko na" - spin-out at 1.2x, smile back on "na", 3.4x whip
     seg(10, C[8], C[9], 2.70, [(3.78, 1.2), (4.12, None)], pre=INT_DN, grade=dict(wb=[0.97, 1.0, 1.05])),
     # 10 two girls: "toko na" - 2x landing, smile on "ko-na"
-    seg(11, C[9], C[10], 2.45, [(2.95, 2.0), (3.70, None)], grade=dict(exposure=-0.06)),
+    seg(11, C[9], C[10], 2.47, [(3.30, 0.8), (3.72, None)], grade=dict(exposure=-0.06)),
     # 11 chug: revealed on "o mujhko", funnel swing + chug in 0.5x SLOW MOTION over the drum break, whip into the drop
-    seg(12, C[10], C[11], 1.25, [(1.95, 1.0), (2.78, 0.5), (3.30, None)], pre=INT_DN,
-        zoom=[[C[10], 1.0, 0.444, 0.469], [C[10] + 0.70, 1.0, 0.444, 0.469], [C[10] + 2.36, 1.07, 0.444, 0.469], [C[11], 1.07, 0.444, 0.469]]),
+    seg(12, C[10], C[11], 1.45, [(1.95, 1.0), (2.78, 0.5), (3.30, None)], pre=INT_DN,
+        zoom=[[C[10], 1.0, 0.444, 0.469], [C[10] + 0.50, 1.0, 0.444, 0.469], [C[10] + 2.16, 1.07, 0.444, 0.469], [C[11], 1.07, 0.444, 0.469]]),
     # 12 THE DROP - "ghul mil ghul mil launda": group finale
-    seg(13, C[11], C[12], 9.0, [(9.0 + C[12] - C[11], 1.0)],
-        zoom=[[C[11], 1.08, 0.5, 0.599], [21.19, 1.08, 0.5, 0.599], [23.19, 1.0, 0.5, 0.599],
-              [24.69, 1.0, 0.5, 0.62], [DUR, 1.035, 0.5, 0.62]],
+    # 12 THE DROP - "ghul mil ghul mil launda": everyone dances across one by one (src 1.95-9.9),
+    #    the whole group floods in on the 28.69 downbeat, then dances together to the end
+    #    ... and the fists-up finish in 0.6x slow motion as the line ends
+    seg(13, C[11], C[12], 1.95, [(16.35, 1.0), (16.89, None)],
+        zoom=[[C[11], 1.06, 0.5, 0.599], [21.70, 1.0, 0.5, 0.599], [28.69, 1.0, 0.5, 0.62], [DUR, 1.06, 0.5, 0.62]],
         grade=dict(wb=[0.98, 1.0, 1.02])),
 ]
 
@@ -114,13 +119,13 @@ fx.append(dict(f=419, mix="next", a=0.3)); fx.append(dict(f=420, mix="prev", a=0
 # 4 -> 10 : pre-blur + whip-in
 bridge([474, 475, 476, 477], None, [30, 50, 70, 90]); bridge([478, 479, 480], [120, 50, 12], [100, 50, 15])
 # 11 -> 12 : blur bridge
-bridge([536, 537, 538, 539], None, [30, 55, 45, 20])
+bridge([543, 544, 545, 546], None, [30, 55, 45, 20])
 # 12 -> 13 : THE DROP - whip-in + small lift
 bridge([621, 622, 623, 624], [220, 100, 35, 8], [140, 70, 28, 8], bright=[0.04, 0.04, 0.02, 0.0])
 
 edl = dict(
     fps=FPS, duration=DUR,
-    audio=dict(file=os.path.join(HERE, "song_segment.wav"), start=0.0, fade_in=0.015, fade_out=0.06),
+    audio=dict(file=SONG, start=0.0, fade_in=0.015, fade_out=0.12),
     grade=dict(contrast=0.10, pivot=0.45, lift=0.012, saturation=1.06, knee=0.82,
                high_tint=[0.010, 0.003, -0.008], shadow_tint=[-0.004, 0.0, 0.006],
                vignette=0.10, grain=0.004, sharpen=0.22),
